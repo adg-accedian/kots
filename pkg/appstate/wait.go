@@ -28,6 +28,7 @@ var (
 		PersistentVolumeClaimResourceKind: WaitForPersistentVolumeClaimToBeReady,
 		ServiceResourceKind:               WaitForServiceToBeReady,
 		StatefulSetResourceKind:           WaitForStatefulSetToBeReady,
+		SecretResourceKind:                WaitForSecretToBeReady,
 	}
 
 	WaitForResourceInterval = time.Second * 2
@@ -162,6 +163,24 @@ func WaitForStatefulSetToBeReady(clientset kubernetes.Interface, namespace, name
 
 		time.Sleep(WaitForResourceInterval)
 	}
+}
+
+func WaitForSecretToBeReady(clientset kubernetes.Interface, namespace, name string) error {
+    for {
+        r, err := clientset.CoreV1().Secrets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+        if err != nil && !kuberneteserrors.IsNotFound(err) {
+            return errors.Wrap(err, "failed to get existing secret")
+        }
+
+        if err == nil {
+            state := CalculateSecretState(r)
+            if state == types.StateReady {
+                return nil
+            }
+        }
+
+        time.Sleep(WaitForResourceInterval)
+    }
 }
 
 func WaitForGenericResourceToBeReady(dr dynamic.ResourceInterface, name string) (err error) {
